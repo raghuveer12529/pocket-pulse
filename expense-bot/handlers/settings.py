@@ -66,6 +66,44 @@ async def addkeyword_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         raise
 
 
+INTRO_TEXT = """👋 Welcome to Pocket Pulse!
+
+💸 *Log an expense*
+Just type: `450 zomato` or `450` (then pick a category)
+
+📋 *View & manage*
+/last — last 5 expenses with delete buttons
+/find <word> — search expenses
+/undo — delete last entry
+
+📊 *Reports*
+/summary — today / week / month totals
+/report — monthly breakdown
+/report last month
+/report this week
+/chart — pie chart
+/export — download as Excel
+
+💰 *Budgets*
+/setbudget 25000 — overall monthly limit
+/setbudget food 6000 — per category limit
+/budgets — view usage with progress bars
+
+🔄 *Recurring*
+/recurring add — set up a monthly expense
+/recurring list — view all recurring
+/recurring delete <id> — remove one
+
+⚙️ *Settings*
+/setcurrency USD — change currency
+/addkeyword food biryani — add custom keyword
+/categories — list all categories & keywords"""
+
+
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text(INTRO_TEXT, parse_mode="MarkdownV2")
+
+
 async def categories_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db_path = context.bot_data["db_path"]
     try:
@@ -83,6 +121,7 @@ async def categories_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 def get_handlers():
     return [
+        CommandHandler("start", start_command),
         CommandHandler("setcurrency", setcurrency_command),
         CommandHandler("addkeyword", addkeyword_command),
         CommandHandler("categories", categories_command),
