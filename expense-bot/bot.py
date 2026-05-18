@@ -1,12 +1,12 @@
 import os
 import logging
-import aiosqlite
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, TypeHandler
 from telegram.ext import ApplicationHandlerStop
 
 from db import schema, queries
+from db.connection import open_db
 from handlers import add, reports, budgets, search, settings
 from handlers.recurring import get_conversation_handler, _schedule_recurring_job
 
@@ -32,12 +32,9 @@ async def owner_only(update: Update, context) -> None:
 
 
 async def post_init(application: Application) -> None:
-    db_path = application.bot_data["db_path"]
-    os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
-
-    async with aiosqlite.connect(db_path) as db:
-        await schema.create_tables(db)
-        recurring_list = await queries.get_all_recurring(db)
+    db = application.bot_data["db_conn"]
+    await schema.create_tables(db)
+    recurring_list = await queries.get_all_recurring(db)
 
     for r in recurring_list:
         _schedule_recurring_job(application, r)
@@ -47,8 +44,11 @@ async def post_init(application: Application) -> None:
 
 def main() -> None:
     token = os.environ["BOT_TOKEN"]
-    db_path = os.environ.get("DB_PATH", "./data/expenses.db")
     allowed_user_id = int(os.environ["ALLOWED_USER_ID"])
+    turso_url = os.environ["TURSO_DATABASE_URL"]
+    turso_token = os.environ["TURSO_AUTH_TOKEN"]
+
+    db_conn = open_db(url=turso_url, auth_token=turso_token)
 
     app = (
         Application.builder()
@@ -56,14 +56,10 @@ def main() -> None:
         .post_init(post_init)
         .build()
     )
-    app.bot_data["db_path"] = db_path
+    app.bot_data["db_conn"] = db_conn
     app.bot_data["allowed_user_id"] = allowed_user_id
 
-    # group -1 runs before all other handlers — blocks unauthorised users first
     app.add_handler(TypeHandler(Update, owner_only), group=-1)
-
-    # ConversationHandler must be registered before plain CommandHandlers
-    # that share the same command name
     app.add_handler(get_conversation_handler())
 
     for handler in (
