@@ -101,7 +101,7 @@ Just type: `450 zomato` or `450` (then pick a category)
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(INTRO_TEXT, parse_mode="MarkdownV2")
+    await update.message.reply_text(INTRO_TEXT, parse_mode="Markdown")
 
 
 async def categories_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
