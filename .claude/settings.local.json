@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(superpowers:brainstorming)",
+      "Bash(git -C /Users/rtalari/Documents/GitHub/pocket-pulse log --oneline -5)",
+      "Bash(git -C /Users/rtalari/Documents/GitHub/pocket-pulse add docs/superpowers/specs/2026-05-18-expense-bot-design.md)",
+      "Bash(git -C /Users/rtalari/Documents/GitHub/pocket-pulse commit -m ' *)",
+      "Skill(superpowers:writing-plans)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Skill(superpowers:executing-plans)",
+      "Bash(git checkout *)",
+      "Bash(python -m pytest tests/test_schema.py -v)",
+      "Bash(python3 -m pytest tests/test_schema.py -v)",
+      "Read(//opt/homebrew/bin/**)",
+      "Read(//Users/rtalari/.pyenv/**)",
+      "Bash(python3.13 --version)",
+      "Bash(python3.13 -m pip install -r /Users/rtalari/Documents/GitHub/pocket-pulse/expense-bot/requirements.txt -r /Users/rtalari/Documents/GitHub/pocket-pulse/expense-bot/requirements-dev.txt --quiet)",
+      "Bash(python3.13 -m venv .venv)",
+      "Bash(.venv/bin/pip install *)",
+      "Bash(.venv/bin/python -m pytest tests/test_schema.py -v)",
+      "Bash(.venv/bin/python -m pytest tests/test_schema.py::test_tables_exist -vv)",
+      "Bash(.venv/bin/python -m pytest tests/test_queries.py -v)",
+      "Bash(.venv/bin/python -m pytest tests/test_parser.py -v)",
+      "Bash(.venv/bin/python -m pytest tests/test_categorizer.py -v)",
+      "Bash(.venv/bin/python -m pytest tests/test_charts.py -v)",
+      "Bash(.venv/bin/python -m pytest tests/test_budget_alert.py -v)",
+      "Bash(.venv/bin/python -m pytest -v)",
+      "Bash(.venv/bin/python *)",
+      "Bash(git -C /Users/rtalari/Documents/GitHub/pocket-pulse log --oneline -8)"
+    ]
+  }
+}
