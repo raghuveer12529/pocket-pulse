@@ -55,8 +55,9 @@ class _ExecCtx:
 class Connection:
     """Async-compatible wrapper around a libsql_experimental connection."""
 
-    def __init__(self, raw) -> None:
+    def __init__(self, raw, *, synced: bool = False) -> None:
         self._raw = raw
+        self._synced = synced
 
     def execute(self, sql: str, params=()) -> _ExecCtx:
         return _ExecCtx(self._raw, sql, params)
@@ -66,7 +67,8 @@ class Connection:
 
     async def commit(self) -> None:
         self._raw.commit()
-        self._raw.sync()
+        if self._synced:
+            self._raw.sync()
 
     async def __aenter__(self) -> Connection:
         return self
@@ -81,4 +83,4 @@ def open_db(url: str, auth_token: str, local_path: str = "data/local_replica.db"
     os.makedirs(os.path.dirname(os.path.abspath(local_path)), exist_ok=True)
     raw = libsql.connect(local_path, sync_url=url, auth_token=auth_token)
     raw.sync()
-    return Connection(raw)
+    return Connection(raw, synced=True)

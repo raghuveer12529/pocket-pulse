@@ -71,8 +71,21 @@ def main() -> None:
     ):
         app.add_handler(handler)
 
-    logger.info("Bot starting...")
-    app.run_polling(drop_pending_updates=True)
+    webhook_url = os.environ.get("WEBHOOK_URL")
+    if webhook_url:
+        port = int(os.environ.get("PORT", 8080))
+        secret = os.environ.get("WEBHOOK_SECRET", "")
+        logger.info("Bot starting in webhook mode on port %d...", port)
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=port,
+            webhook_url=webhook_url,
+            secret_token=secret,
+            drop_pending_updates=True,
+        )
+    else:
+        logger.info("Bot starting in polling mode (local dev)...")
+        app.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
