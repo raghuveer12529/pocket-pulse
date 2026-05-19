@@ -1,6 +1,5 @@
 from io import BytesIO
 from datetime import date, timedelta
-import aiosqlite
 import pandas as pd
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler
@@ -41,13 +40,12 @@ def _period_dates(args: list[str]) -> tuple[str, str, str]:
 
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
     start, end, label = _period_dates(context.args or [])
 
     try:
-        async with aiosqlite.connect(db_path) as db:
-            totals = await queries.get_category_totals(db, user_id, start, end)
-            overall_budget = await queries.get_budget(db, user_id, "overall")
+        totals = await queries.get_category_totals(db, user_id, start, end)
+        overall_budget = await queries.get_budget(db, user_id, "overall")
 
         if not totals:
             await update.message.reply_text(f"No expenses found for {label}.")
@@ -72,16 +70,15 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def summary_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
     today = date.today()
     week_start = (today - timedelta(days=today.weekday())).isoformat()
     year_month = today.strftime("%Y-%m")
 
     try:
-        async with aiosqlite.connect(db_path) as db:
-            today_totals = await queries.get_category_totals(db, user_id, today.isoformat(), today.isoformat())
-            week_totals = await queries.get_category_totals(db, user_id, week_start, today.isoformat())
-            month_total = await queries.get_month_total(db, user_id, year_month)
+        today_totals = await queries.get_category_totals(db, user_id, today.isoformat(), today.isoformat())
+        week_totals = await queries.get_category_totals(db, user_id, week_start, today.isoformat())
+        month_total = await queries.get_month_total(db, user_id, year_month)
 
         today_total = sum(today_totals.values())
         week_total = sum(week_totals.values())
@@ -98,14 +95,13 @@ async def summary_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def chart_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
     today = date.today()
     start = today.replace(day=1).isoformat()
     label = f"{MONTH_NAMES[today.month]} {today.year}"
 
     try:
-        async with aiosqlite.connect(db_path) as db:
-            totals = await queries.get_category_totals(db, user_id, start, today.isoformat())
+        totals = await queries.get_category_totals(db, user_id, start, today.isoformat())
 
         if not totals:
             await update.message.reply_text("No expenses this month to chart.")
@@ -120,11 +116,10 @@ async def chart_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
 
     try:
-        async with aiosqlite.connect(db_path) as db:
-            expenses = await queries.get_all_expenses(db, user_id)
+        expenses = await queries.get_all_expenses(db, user_id)
 
         if not expenses:
             await update.message.reply_text("No expenses to export yet.")

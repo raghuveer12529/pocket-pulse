@@ -1,4 +1,3 @@
-import aiosqlite
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler
 from db import queries
@@ -9,7 +8,7 @@ CATEGORY_NAME_MAP = {c.lower(): c for c in ["Food", "Transport", "Shopping", "He
 
 async def setcurrency_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
     args = context.args or []
 
     if not args:
@@ -27,9 +26,8 @@ async def setcurrency_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     try:
-        async with aiosqlite.connect(db_path) as db:
-            await queries.get_or_create_user(db, user_id)
-            await queries.update_user_currency(db, user_id, currency)
+        await queries.get_or_create_user(db, user_id)
+        await queries.update_user_currency(db, user_id, currency)
         await update.message.reply_text(f"✅ Currency set to {currency}")
     except Exception:
         await update.message.reply_text("Something went wrong, please try again.")
@@ -38,7 +36,7 @@ async def setcurrency_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def addkeyword_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
     args = context.args or []
 
     if len(args) < 2:
@@ -55,8 +53,7 @@ async def addkeyword_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     keyword = args[1].lower()
     try:
-        async with aiosqlite.connect(db_path) as db:
-            ok = await queries.add_keyword_to_category(db, category, keyword)
+        ok = await queries.add_keyword_to_category(db, category, keyword)
         if ok:
             await update.message.reply_text(f"✅ Added '{keyword}' to {category}")
         else:
@@ -105,10 +102,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def categories_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
     try:
-        async with aiosqlite.connect(db_path) as db:
-            cats = await queries.get_categories(db)
+        cats = await queries.get_categories(db)
         lines = ["📂 Categories & Keywords\n━━━━━━━━━━━━━━━"]
         for c in cats:
             kws = ", ".join(c["keywords"]) if c["keywords"] else "none"

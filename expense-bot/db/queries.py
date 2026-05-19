@@ -1,16 +1,16 @@
 import json
 from datetime import datetime, timezone
-import aiosqlite
+from typing import Any
 
 
-async def get_or_create_user(db: aiosqlite.Connection, user_id: int) -> None:
+async def get_or_create_user(db: Any, user_id: int) -> None:
     await db.execute(
         "INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,)
     )
     await db.commit()
 
 
-async def get_user(db: aiosqlite.Connection, user_id: int) -> dict:
+async def get_user(db: Any, user_id: int) -> dict:
     async with db.execute(
         "SELECT user_id, currency, timezone FROM users WHERE user_id=?", (user_id,)
     ) as cur:
@@ -21,7 +21,7 @@ async def get_user(db: aiosqlite.Connection, user_id: int) -> dict:
 
 
 async def add_expense(
-    db: aiosqlite.Connection,
+    db: Any,
     user_id: int,
     amount: float,
     category: str,
@@ -38,7 +38,7 @@ async def add_expense(
     return row_id
 
 
-async def get_last_expense_id(db: aiosqlite.Connection, user_id: int) -> int | None:
+async def get_last_expense_id(db: Any, user_id: int) -> int | None:
     async with db.execute(
         "SELECT id FROM expenses WHERE user_id=? ORDER BY id DESC LIMIT 1", (user_id,)
     ) as cur:
@@ -46,7 +46,7 @@ async def get_last_expense_id(db: aiosqlite.Connection, user_id: int) -> int | N
     return row[0] if row else None
 
 
-async def delete_expense(db: aiosqlite.Connection, expense_id: int, user_id: int) -> bool:
+async def delete_expense(db: Any, expense_id: int, user_id: int) -> bool:
     async with db.execute(
         "DELETE FROM expenses WHERE id=? AND user_id=?", (expense_id, user_id)
     ) as cur:
@@ -56,7 +56,7 @@ async def delete_expense(db: aiosqlite.Connection, expense_id: int, user_id: int
 
 
 async def get_category_totals(
-    db: aiosqlite.Connection, user_id: int, start_date: str, end_date: str
+    db: Any, user_id: int, start_date: str, end_date: str
 ) -> dict[str, float]:
     async with db.execute(
         """SELECT category, SUM(amount) FROM expenses
@@ -69,7 +69,7 @@ async def get_category_totals(
 
 
 async def get_expenses_for_period(
-    db: aiosqlite.Connection, user_id: int, start_date: str, end_date: str
+    db: Any, user_id: int, start_date: str, end_date: str
 ) -> list[dict]:
     async with db.execute(
         """SELECT id, amount, category, note, date FROM expenses
@@ -81,7 +81,7 @@ async def get_expenses_for_period(
     return [{"id": r[0], "amount": r[1], "category": r[2], "note": r[3], "date": r[4]} for r in rows]
 
 
-async def get_all_expenses(db: aiosqlite.Connection, user_id: int) -> list[dict]:
+async def get_all_expenses(db: Any, user_id: int) -> list[dict]:
     async with db.execute(
         """SELECT id, amount, category, note, date, created_at FROM expenses
            WHERE user_id=? ORDER BY date DESC""",
@@ -94,7 +94,7 @@ async def get_all_expenses(db: aiosqlite.Connection, user_id: int) -> list[dict]
     ]
 
 
-async def get_month_total(db: aiosqlite.Connection, user_id: int, year_month: str) -> float:
+async def get_month_total(db: Any, user_id: int, year_month: str) -> float:
     async with db.execute(
         "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE user_id=? AND strftime('%Y-%m',date)=?",
         (user_id, year_month),
@@ -104,7 +104,7 @@ async def get_month_total(db: aiosqlite.Connection, user_id: int, year_month: st
 
 
 async def get_category_month_total(
-    db: aiosqlite.Connection, user_id: int, category: str, year_month: str
+    db: Any, user_id: int, category: str, year_month: str
 ) -> float:
     async with db.execute(
         """SELECT COALESCE(SUM(amount),0) FROM expenses
@@ -116,7 +116,7 @@ async def get_category_month_total(
 
 
 async def upsert_budget(
-    db: aiosqlite.Connection, user_id: int, category: str, monthly_limit: float
+    db: Any, user_id: int, category: str, monthly_limit: float
 ) -> None:
     await db.execute(
         "INSERT OR REPLACE INTO budgets (user_id, category, monthly_limit) VALUES (?,?,?)",
@@ -125,7 +125,7 @@ async def upsert_budget(
     await db.commit()
 
 
-async def get_budget(db: aiosqlite.Connection, user_id: int, category: str) -> float | None:
+async def get_budget(db: Any, user_id: int, category: str) -> float | None:
     async with db.execute(
         "SELECT monthly_limit FROM budgets WHERE user_id=? AND category=?", (user_id, category)
     ) as cur:
@@ -133,7 +133,7 @@ async def get_budget(db: aiosqlite.Connection, user_id: int, category: str) -> f
     return row[0] if row else None
 
 
-async def get_all_budgets(db: aiosqlite.Connection, user_id: int) -> list[dict]:
+async def get_all_budgets(db: Any, user_id: int) -> list[dict]:
     async with db.execute(
         "SELECT category, monthly_limit FROM budgets WHERE user_id=? ORDER BY category",
         (user_id,),
@@ -142,14 +142,14 @@ async def get_all_budgets(db: aiosqlite.Connection, user_id: int) -> list[dict]:
     return [{"category": r[0], "monthly_limit": r[1]} for r in rows]
 
 
-async def get_categories(db: aiosqlite.Connection) -> list[dict]:
+async def get_categories(db: Any) -> list[dict]:
     async with db.execute("SELECT name, keywords FROM categories ORDER BY name") as cur:
         rows = await cur.fetchall()
     return [{"name": r[0], "keywords": json.loads(r[1])} for r in rows]
 
 
 async def add_keyword_to_category(
-    db: aiosqlite.Connection, category_name: str, keyword: str
+    db: Any, category_name: str, keyword: str
 ) -> bool:
     async with db.execute(
         "SELECT keywords FROM categories WHERE name=?", (category_name,)
@@ -169,7 +169,7 @@ async def add_keyword_to_category(
 
 
 async def get_last_n_expenses(
-    db: aiosqlite.Connection, user_id: int, n: int = 5
+    db: Any, user_id: int, n: int = 5
 ) -> list[dict]:
     async with db.execute(
         """SELECT id, amount, category, note, date FROM expenses
@@ -181,7 +181,7 @@ async def get_last_n_expenses(
 
 
 async def search_expenses(
-    db: aiosqlite.Connection, user_id: int, keyword: str, limit: int = 10
+    db: Any, user_id: int, keyword: str, limit: int = 10
 ) -> list[dict]:
     pattern = f"%{keyword}%"
     async with db.execute(
@@ -195,7 +195,7 @@ async def search_expenses(
 
 
 async def add_recurring(
-    db: aiosqlite.Connection,
+    db: Any,
     user_id: int,
     amount: float,
     note: str,
@@ -212,7 +212,7 @@ async def add_recurring(
     return row_id
 
 
-async def get_all_recurring(db: aiosqlite.Connection) -> list[dict]:
+async def get_all_recurring(db: Any) -> list[dict]:
     async with db.execute(
         "SELECT id, user_id, amount, note, category, day_of_month FROM recurring"
     ) as cur:
@@ -223,7 +223,7 @@ async def get_all_recurring(db: aiosqlite.Connection) -> list[dict]:
     ]
 
 
-async def get_recurring_for_user(db: aiosqlite.Connection, user_id: int) -> list[dict]:
+async def get_recurring_for_user(db: Any, user_id: int) -> list[dict]:
     async with db.execute(
         "SELECT id, amount, note, category, day_of_month FROM recurring WHERE user_id=? ORDER BY id",
         (user_id,),
@@ -236,7 +236,7 @@ async def get_recurring_for_user(db: aiosqlite.Connection, user_id: int) -> list
 
 
 async def delete_recurring(
-    db: aiosqlite.Connection, recurring_id: int, user_id: int
+    db: Any, recurring_id: int, user_id: int
 ) -> bool:
     async with db.execute(
         "DELETE FROM recurring WHERE id=? AND user_id=?", (recurring_id, user_id)
@@ -247,7 +247,7 @@ async def delete_recurring(
 
 
 async def update_user_currency(
-    db: aiosqlite.Connection, user_id: int, currency: str
+    db: Any, user_id: int, currency: str
 ) -> None:
     await db.execute(
         "UPDATE users SET currency=? WHERE user_id=?", (currency, user_id)

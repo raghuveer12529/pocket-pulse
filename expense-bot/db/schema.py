@@ -1,5 +1,5 @@
 import json
-import aiosqlite
+from typing import Any
 
 DEFAULT_CATEGORIES = [
     ("Food",          ["zomato", "swiggy", "restaurant", "lunch", "dinner", "breakfast", "cafe"]),
@@ -11,7 +11,7 @@ DEFAULT_CATEGORIES = [
     ("Other",         []),
 ]
 
-async def create_tables(db: aiosqlite.Connection) -> None:
+async def create_tables(db: Any) -> None:
     await db.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             user_id   INTEGER PRIMARY KEY,
