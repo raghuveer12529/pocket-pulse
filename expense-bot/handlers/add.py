@@ -1,5 +1,4 @@
 import time as _time
-import aiosqlite
 from datetime import date
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -44,7 +43,7 @@ def _pop_pending(key: str) -> dict | None:
 
 async def expense_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
     try:
         parsed = parse_expense(update.message.text)
     except ParseError:
@@ -55,14 +54,13 @@ async def expense_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
 
     try:
-        async with aiosqlite.connect(db_path) as db:
-            await queries.get_or_create_user(db, user_id)
-            category = await categorize(parsed["note"], db)
+        await queries.get_or_create_user(db, user_id)
+        category = await categorize(parsed["note"], db)
 
         if category:
             await _save_expense(update, context, user_id, parsed["amount"], category, parsed["note"])
         else:
-            cats = await _get_category_names(db_path)
+            cats = await _get_category_names(db)
             key = _store_pending(user_id, update.message.message_id, parsed["amount"], parsed["note"])
             keyboard = _build_category_keyboard(cats, key)
             await update.message.reply_text(
@@ -108,14 +106,13 @@ async def new_category_message(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text("Selection expired. Please re-enter your expense.")
         return
 
-    db_path = context.bot_data["db_path"]
-    async with aiosqlite.connect(db_path) as db:
-        await db.execute(
-            "INSERT OR IGNORE INTO categories (name, keywords) VALUES (?, ?)",
-            (category_name, "[]"),
-        )
-        await db.commit()
-        await queries.add_expense(db, user_id, pending["amount"], category_name, pending["note"], date.today().isoformat())
+    db = context.bot_data["db_conn"]
+    await db.execute(
+        "INSERT OR IGNORE INTO categories (name, keywords) VALUES (?, ?)",
+        (category_name, "[]"),
+    )
+    await db.commit()
+    await queries.add_expense(db, user_id, pending["amount"], category_name, pending["note"], date.today().isoformat())
 
     await update.message.reply_text(
         f"✅ ₹{pending['amount']:.0f} added under 📦 {category_name}\n"
@@ -143,14 +140,13 @@ async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def undo_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
     try:
-        async with aiosqlite.connect(db_path) as db:
-            last_id = await queries.get_last_expense_id(db, user_id)
-            if last_id is None:
-                await update.message.reply_text("No expenses to undo.")
-                return
-            await queries.delete_expense(db, last_id, user_id)
+        last_id = await queries.get_last_expense_id(db, user_id)
+        if last_id is None:
+            await update.message.reply_text("No expenses to undo.")
+            return
+        await queries.delete_expense(db, last_id, user_id)
         await update.message.reply_text("↩️ Last expense deleted.")
     except Exception:
         await update.message.reply_text("Something went wrong, please try again.")
@@ -165,19 +161,17 @@ async def _save_expense(
     category: str,
     note: str,
 ) -> None:
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
     today = date.today().isoformat()
-    async with aiosqlite.connect(db_path) as db:
-        await queries.add_expense(db, user_id, amount, category, note, today)
+    await queries.add_expense(db, user_id, amount, category, note, today)
     emoji = CATEGORY_EMOJI.get(category, "")
     msg = update.callback_query.message if update.callback_query else update.message
     await msg.reply_text(f"✅ ₹{amount:.0f} added under {emoji} {category}")
     await check_and_alert(context, user_id, category, amount)
 
 
-async def _get_category_names(db_path: str) -> list[str]:
-    async with aiosqlite.connect(db_path) as db:
-        cats = await queries.get_categories(db)
+async def _get_category_names(db) -> list[str]:
+    cats = await queries.get_categories(db)
     return [c["name"] for c in cats]
 
 
