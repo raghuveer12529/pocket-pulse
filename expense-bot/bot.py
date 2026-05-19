@@ -76,9 +76,11 @@ def main() -> None:
         port = int(os.environ.get("PORT", 8080))
         secret = os.environ.get("WEBHOOK_SECRET", "")
         logger.info("Bot starting in webhook mode on port %d...", port)
+        url_path = webhook_url.split("/", maxsplit=3)[-1]
         app.run_webhook(
             listen="0.0.0.0",
             port=port,
+            url_path=url_path,
             webhook_url=webhook_url,
             secret_token=secret,
             drop_pending_updates=True,
