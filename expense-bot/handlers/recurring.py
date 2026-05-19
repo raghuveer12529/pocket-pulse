@@ -1,4 +1,3 @@
-import aiosqlite
 from datetime import date, time
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -55,9 +54,8 @@ async def recv_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 async def recv_note(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data["rec_note"] = update.message.text.strip()
-    db_path = context.bot_data["db_path"]
-    async with aiosqlite.connect(db_path) as db:
-        cats = await queries.get_categories(db)
+    db = context.bot_data["db_conn"]
+    cats = await queries.get_categories(db)
     keyboard = []
     row = []
     for cat in cats:
@@ -91,12 +89,11 @@ async def recv_day(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     ud = context.user_data
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
 
-    async with aiosqlite.connect(db_path) as db:
-        rid = await queries.add_recurring(
-            db, user_id, ud["rec_amount"], ud["rec_note"], ud["rec_category"], day
-        )
+    rid = await queries.add_recurring(
+        db, user_id, ud["rec_amount"], ud["rec_note"], ud["rec_category"], day
+    )
 
     r = {
         "id": rid, "user_id": user_id, "amount": ud["rec_amount"],
@@ -119,9 +116,8 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def _recurring_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
-    async with aiosqlite.connect(db_path) as db:
-        rows = await queries.get_recurring_for_user(db, user_id)
+    db = context.bot_data["db_conn"]
+    rows = await queries.get_recurring_for_user(db, user_id)
     if not rows:
         await update.message.reply_text("No recurring expenses set.")
         return
@@ -144,9 +140,8 @@ async def _recurring_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return
 
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
-    async with aiosqlite.connect(db_path) as db:
-        deleted = await queries.delete_recurring(db, rid, user_id)
+    db = context.bot_data["db_conn"]
+    deleted = await queries.delete_recurring(db, rid, user_id)
 
     if deleted:
         jobs = context.application.job_queue.get_jobs_by_name(f"recurring_{rid}")
@@ -159,10 +154,9 @@ async def _recurring_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def recurring_job(context: ContextTypes.DEFAULT_TYPE) -> None:
     r = context.job.data
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
     today = date.today().isoformat()
-    async with aiosqlite.connect(db_path) as db:
-        await queries.add_expense(db, r["user_id"], r["amount"], r["category"], r["note"], today)
+    await queries.add_expense(db, r["user_id"], r["amount"], r["category"], r["note"], today)
     await context.bot.send_message(
         chat_id=r["user_id"],
         text=f"🔄 Recurring: ₹{r['amount']:.0f} added under {r['category']} ({r['note']})",

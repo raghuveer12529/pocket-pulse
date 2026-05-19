@@ -1,4 +1,3 @@
-import aiosqlite
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
 from db import queries
@@ -17,7 +16,7 @@ def _format_expense(e: dict) -> str:
 
 async def find_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
     keyword = " ".join(context.args or []).strip()
 
     if not keyword:
@@ -27,8 +26,7 @@ async def find_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     try:
-        async with aiosqlite.connect(db_path) as db:
-            results = await queries.search_expenses(db, user_id, keyword)
+        results = await queries.search_expenses(db, user_id, keyword)
 
         if not results:
             await update.message.reply_text(f"No expenses found matching '{keyword}'.")
@@ -45,11 +43,10 @@ async def find_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 async def last_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
 
     try:
-        async with aiosqlite.connect(db_path) as db:
-            expenses = await queries.get_last_n_expenses(db, user_id, 5)
+        expenses = await queries.get_last_n_expenses(db, user_id, 5)
 
         if not expenses:
             await update.message.reply_text("No expenses yet.")
@@ -69,11 +66,10 @@ async def delete_expense_callback(update: Update, context: ContextTypes.DEFAULT_
     await query.answer()
     user_id = update.effective_user.id
     expense_id = int(query.data.split(":")[1])
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
 
     try:
-        async with aiosqlite.connect(db_path) as db:
-            deleted = await queries.delete_expense(db, expense_id, user_id)
+        deleted = await queries.delete_expense(db, expense_id, user_id)
 
         if deleted:
             await query.edit_message_text("Deleted ✅")

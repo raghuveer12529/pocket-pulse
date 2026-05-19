@@ -1,4 +1,3 @@
-import aiosqlite
 from datetime import date
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler
@@ -20,7 +19,7 @@ def _progress_bar(pct: int) -> str:
 
 async def setbudget_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
     args = context.args or []
 
     try:
@@ -49,9 +48,8 @@ async def setbudget_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             )
             return
 
-        async with aiosqlite.connect(db_path) as db:
-            await queries.get_or_create_user(db, user_id)
-            await queries.upsert_budget(db, user_id, category, limit)
+        await queries.get_or_create_user(db, user_id)
+        await queries.upsert_budget(db, user_id, category, limit)
 
         await update.message.reply_text(f"✅ {display} budget set to ₹{limit:,.0f}/month")
     except ValueError:
@@ -63,28 +61,27 @@ async def setbudget_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def budgets_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    db_path = context.bot_data["db_path"]
+    db = context.bot_data["db_conn"]
     year_month = date.today().strftime("%Y-%m")
 
     try:
-        async with aiosqlite.connect(db_path) as db:
-            budgets = await queries.get_all_budgets(db, user_id)
-            if not budgets:
-                await update.message.reply_text("No budgets set. Use /setbudget to add one.")
-                return
+        budgets = await queries.get_all_budgets(db, user_id)
+        if not budgets:
+            await update.message.reply_text("No budgets set. Use /setbudget to add one.")
+            return
 
-            lines = ["📋 Your Budgets\n━━━━━━━━━━━━━━━"]
-            for b in budgets:
-                cat = b["category"]
-                limit = b["monthly_limit"]
-                if cat == "overall":
-                    spent = await queries.get_month_total(db, user_id, year_month)
-                else:
-                    spent = await queries.get_category_month_total(db, user_id, cat, year_month)
-                pct = int(min(spent / limit * 100, 100))
-                emoji = CATEGORY_EMOJI.get(cat, "")
-                bar = _progress_bar(pct)
-                lines.append(f"{emoji} {cat}\n  {bar}\n  ₹{spent:,.0f} / ₹{limit:,.0f}")
+        lines = ["📋 Your Budgets\n━━━━━━━━━━━━━━━"]
+        for b in budgets:
+            cat = b["category"]
+            limit = b["monthly_limit"]
+            if cat == "overall":
+                spent = await queries.get_month_total(db, user_id, year_month)
+            else:
+                spent = await queries.get_category_month_total(db, user_id, cat, year_month)
+            pct = int(min(spent / limit * 100, 100))
+            emoji = CATEGORY_EMOJI.get(cat, "")
+            bar = _progress_bar(pct)
+            lines.append(f"{emoji} {cat}\n  {bar}\n  ₹{spent:,.0f} / ₹{limit:,.0f}")
 
         await update.message.reply_text("\n".join(lines))
     except Exception:
