@@ -85,7 +85,7 @@ def create_webhook_app():
 
     web = FastAPI(lifespan=lifespan)
 
-    @web.get("/health")
+    @web.api_route("/health", methods=["GET", "HEAD"])
     async def health():
         return {"status": "ok"}
 
