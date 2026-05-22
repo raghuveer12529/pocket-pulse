@@ -134,7 +134,13 @@ async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await query.edit_message_text("This selection has expired. Please re-enter your expense.")
         return
 
-    await _save_expense(update, context, user_id, pending["amount"], category, pending["note"])
+    # Auto-learn: save the note as a keyword so next time it resolves without the picker
+    note = pending["note"]
+    if note:
+        db = context.bot_data["db_conn"]
+        await queries.add_keyword_to_category(db, category, note.lower().strip())
+
+    await _save_expense(update, context, user_id, pending["amount"], category, note)
     await query.message.delete()
 
 
