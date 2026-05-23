@@ -1,3 +1,4 @@
+import logging
 import time as _time
 from datetime import date
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -6,8 +7,10 @@ from telegram.ext import (
 )
 from db import queries
 from utils.parser import parse_expense, ParseError
-from utils.categorizer import categorize
+from utils.categorizer import categorize, invalidate_cache
 from utils.budget_alert import check_and_alert
+
+logger = logging.getLogger(__name__)
 
 # in-memory store for pending (uncategorized) expenses keyed by f"{user_id}:{message_id}"
 _pending: dict[str, dict] = {}
@@ -112,6 +115,7 @@ async def new_category_message(update: Update, context: ContextTypes.DEFAULT_TYP
         (category_name, "[]"),
     )
     await db.commit()
+    invalidate_cache()
     await queries.add_expense(db, user_id, pending["amount"], category_name, pending["note"], date.today().isoformat())
 
     await update.message.reply_text(
@@ -139,6 +143,7 @@ async def category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         try:
             db = context.bot_data["db_conn"]
             await queries.add_keyword_to_category(db, category, note.lower().strip())
+            invalidate_cache()
         except Exception:
             logger.warning("Failed to learn keyword '%s' for category '%s'", note, category)
 
