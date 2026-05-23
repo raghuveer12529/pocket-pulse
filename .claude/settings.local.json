@@ -33,7 +33,8 @@
       "Skill(superpowers:finishing-a-development-branch)",
       "Bash(python -c ' *)",
       "Bash(turso --version)",
-      "Skill(keybindings-help)"
+      "Skill(keybindings-help)",
+      "Bash(git fetch *)"
     ]
   }
 }
