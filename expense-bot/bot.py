@@ -79,7 +79,6 @@ def create_webhook_app():
         await ptb.bot.set_webhook(url=webhook_url, secret_token=secret, drop_pending_updates=True)
         logger.info("Webhook registered → %s", webhook_url)
         yield
-        await ptb.bot.delete_webhook()
         await ptb.stop()
         await ptb.shutdown()
 
