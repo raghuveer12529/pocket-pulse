@@ -7,7 +7,7 @@ from telegram.ext import (
 )
 from db import queries
 from utils.parser import parse_expense, ParseError
-from utils.categorizer import categorize, invalidate_cache
+from utils.categorizer import categorize, get_cached_category_names, invalidate_cache
 from utils.budget_alert import check_and_alert
 
 logger = logging.getLogger(__name__)
@@ -57,13 +57,17 @@ async def expense_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
 
     try:
-        await queries.get_or_create_user(db, user_id)
+        known_users: set = context.bot_data.setdefault("known_users", set())
+        if user_id not in known_users:
+            await queries.get_or_create_user(db, user_id)
+            known_users.add(user_id)
+
         category = await categorize(parsed["note"], db)
 
         if category:
             await _save_expense(update, context, user_id, parsed["amount"], category, parsed["note"])
         else:
-            cats = await _get_category_names(db)
+            cats = await get_cached_category_names(db)
             key = _store_pending(user_id, update.message.message_id, parsed["amount"], parsed["note"])
             keyboard = _build_category_keyboard(cats, key)
             await update.message.reply_text(
